@@ -1,0 +1,439 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-bounce: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@layer base {
+  body {
+    @apply antialiased overflow-x-hidden transition-colors duration-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  html.dark body,
+  html:not(.light) body {
+    background-color: #090D16;
+    color: #F1F5F9;
+  }
+  html.light body,
+  html:not(.dark) body {
+    background-color: #F1F5F9;
+    color: #0F172A;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0F19;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 9999px;
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Micro-interaction & tactile animation classes */
+.card-interactive {
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-smooth), background-color var(--transition-smooth);
+}
+
+.card-interactive:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45), 0 0 16px -2px rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.btn-tactile {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.btn-tactile:hover {
+  transform: translateY(-1px);
+}
+
+.btn-tactile:active {
+  transform: scale(0.96);
+}
+
+.badge-pulse {
+  animation: pulseBeacon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseBeacon {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+  }
+}
+
+/* Modal and popover smooth entrance keyframes */
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-pop {
+  animation: modalPopIn 220ms var(--ease-spring) forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 240ms var(--ease-spring) forwards;
+}
+
+/* Glassmorphic surface utility */
+.glass-panel {
+  background: rgba(19, 27, 46, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(35, 46, 74, 0.85);
+}
+
+/* Radar sweep & holographic scanner keyframes */
+@keyframes radarSweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.radar-sweep-beam {
+  transform-origin: 500px 360px;
+  animation: radarSweep 8s linear infinite;
+}
+
+@keyframes scanlineSweep {
+  0% {
+    transform: translateY(0);
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(720px);
+    opacity: 0.1;
+  }
+}
+
+.scanline-bar {
+  animation: scanlineSweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes holographicPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.9)) drop-shadow(0 0 24px rgba(99, 102, 241, 0.5));
+  }
+}
+
+.holo-node-glow {
+  animation: holographicPulse 3s ease-in-out infinite;
+}
+
+
+/* Time Scrub Slider signature animations */
+@keyframes digitSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.digit-slide-in {
+  animation: digitSlideIn 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes timeGlowPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6), inset 0 0 8px rgba(59, 130, 246, 0.3);
+    border-color: rgba(96, 165, 250, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(59, 130, 246, 0.5), inset 0 0 12px rgba(59, 130, 246, 0.4);
+    border-color: rgba(147, 197, 253, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+}
+
+.time-box-glow {
+  animation: timeGlowPulse 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes rippleSpread {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.8);
+  }
+}
+
+.ripple-circle {
+  animation: rippleSpread 500ms ease-out forwards;
+}
+
+@keyframes markerPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+.marker-active-pop {
+  animation: markerPop 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ==========================================================================
+   LIGHT MODE DESIGN SYSTEM OVERRIDES (when html does not have .dark, or has .light)
+   ========================================================================== */
+
+/* 1. Global Page Background & Base Text */
+html:not(.dark) body,
+html.light body {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+/* 2. Top-level Container Backgrounds */
+html:not(.dark) .bg-\[\#090D16\],
+html:not(.dark) .bg-\[\#0B0F19\],
+html:not(.dark) .bg-\[\#0A0F1D\],
+html:not(.dark) .bg-\[\#0A0F1D\]\/90,
+html:not(.dark) .bg-\[\#0C1220\]\/60 {
+  background-color: #F1F5F9 !important;
+}
+
+/* 3. Card & Panel Backgrounds */
+html:not(.dark) .bg-\[\#131B2E\],
+html:not(.dark) .bg-\[\#111827\],
+html:not(.dark) .bg-\[\#121A2C\],
+html:not(.dark) .bg-\[\#11192C\],
+html:not(.dark) .bg-\[\#11182B\],
+html:not(.dark) .bg-\[\#121A2D\],
+html:not(.dark) .bg-\[\#0E1526\],
+html:not(.dark) .bg-\[\#0E1628\],
+html:not(.dark) .bg-\[\#0E1526\]\/95,
+html:not(.dark) .bg-\[\#111827\]\/95,
+html:not(.dark) .bg-\[\#131B2E\]\/90,
+html:not(.dark) .bg-\[\#131B2E\]\/80,
+html:not(.dark) .glass-panel {
+  background-color: #FFFFFF !important;
+}
+
+/* 4. Sub-cards, Inset Boxes, List Items */
+html:not(.dark) .bg-\[\#0B0F19\],
+html:not(.dark) .bg-\[\#0B0F19\]\/60,
+html:not(.dark) .bg-\[\#0D1424\],
+html:not(.dark) .bg-\[\#161F36\],
+html:not(.dark) .bg-slate-900\/60,
+html:not(.dark) .bg-slate-900 {
+  background-color: #F8FAFC !important;
+}
+
+/* 5. Headers & Gradients inside modals / drawers */
+html:not(.dark) .from-\[\#162038\],
+html:not(.dark) .from-\[\#141F36\] {
+  --tw-gradient-from: #F1F5F9 !important;
+  --tw-gradient-to: #FFFFFF !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* 6. Form Inputs & Selects */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* 7. Borders */
+html:not(.dark) .border-\[\#1E293B\],
+html:not(.dark) .border-\[\#232E4A\],
+html:not(.dark) .border-\[\#253659\],
+html:not(.dark) .border-\[\#2D3A5D\],
+html:not(.dark) .border-\[\#2A3756\],
+html:not(.dark) .border-\[\#141E34\],
+html:not(.dark) .border-\[\#19243C\],
+html:not(.dark) .border-slate-800,
+html:not(.dark) .border-slate-700 {
+  border-color: #E2E8F0 !important;
+}
+
+/* 8. Text Headings and Card Titles */
+html:not(.dark) h1,
+html:not(.dark) h2,
+html:not(.dark) h3,
+html:not(.dark) h4,
+html:not(.dark) h5,
+html:not(.dark) h6 {
+  color: #0F172A !important;
+}
+
+/* 9. Body Text and Headings */
+html:not(.dark) .text-white {
+  color: #0F172A;
+}
+
+html:not(.dark) .text-slate-100 {
+  color: #1E293B !important;
+}
+
+html:not(.dark) .text-slate-200 {
+  color: #334155 !important;
+}
+
+html:not(.dark) .text-slate-300 {
+  color: #475569 !important;
+}
+
+html:not(.dark) .text-slate-400 {
+  color: #64748B !important;
+}
+
+/* 10. CRITICAL: Preserve Pure White Text on Solid Colored Buttons, Badges, and Active States */
+html:not(.dark) .bg-blue-600,
+html:not(.dark) .bg-blue-600 .text-white,
+html:not(.dark) [class*="bg-blue-600"] .text-white,
+html:not(.dark) [class*="bg-blue-500"] .text-white,
+html:not(.dark) .bg-emerald-600,
+html:not(.dark) .bg-emerald-600 .text-white,
+html:not(.dark) [class*="bg-emerald-600"] .text-white,
+html:not(.dark) [class*="bg-emerald-500"] .text-white,
+html:not(.dark) .bg-amber-600,
+html:not(.dark) .bg-amber-600 .text-white,
+html:not(.dark) [class*="bg-amber-600"] .text-white,
+html:not(.dark) [class*="bg-amber-500"] .text-white,
+html:not(.dark) .bg-purple-600,
+html:not(.dark) .bg-purple-600 .text-white,
+html:not(.dark) [class*="bg-purple-600"] .text-white,
+html:not(.dark) [class*="bg-purple-500"] .text-white,
+html:not(.dark) .bg-rose-600,
+html:not(.dark) .bg-rose-600 .text-white,
+html:not(.dark) [class*="bg-rose-600"] .text-white,
+html:not(.dark) [class*="bg-rose-500"] .text-white,
+html:not(.dark) .bg-red-600,
+html:not(.dark) .bg-red-600 .text-white,
+html:not(.dark) [class*="bg-red-600"] .text-white,
+html:not(.dark) [class*="bg-red-500"] .text-white,
+html:not(.dark) .keep-white {
+  color: #FFFFFF !important;
+}
+
+/* 11. Interactive Hover Buttons in Light Mode */
+html:not(.dark) .hover\:text-white:hover:not([class*="bg-blue"]):not([class*="bg-emerald"]):not([class*="bg-purple"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-red"]) {
+  color: #0F172A !important;
+}
+
+html:not(.dark) .hover\:bg-slate-800\/80:hover,
+html:not(.dark) .hover\:bg-slate-800\/60:hover,
+html:not(.dark) .hover\:bg-slate-800:hover,
+html:not(.dark) .hover\:bg-\[\#1A253E\]:hover {
+  background-color: #E2E8F0 !important;
+}
+
+/* 12. Card Hover Shadows */
+html:not(.dark) .card-interactive {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+html:not(.dark) .card-interactive:hover {
+  transform: translateY(-3px) scale(1.008);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.1), 0 0 16px -2px rgba(59, 130, 246, 0.15);
+  border-color: rgba(96, 165, 250, 0.6) !important;
+}
+
+/* 13. Light Scrollbars */
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* 14. Smooth Theme Color Transitions */
+body, 
+nav, 
+header, 
+main, 
+section, 
+div, 
+button, 
+input, 
+select {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Accessibility: respect user prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
