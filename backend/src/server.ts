@@ -3,7 +3,8 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initDatabase } from './db/database';
+import { initDatabase, db } from './db/database';
+import { seedDatabase } from './db/seedData';
 import campusRoutes from './routes/campusRoutes';
 import { createIssuesRouter } from './routes/issuesRoutes';
 import { createEventsRouter } from './routes/eventsRoutes';
@@ -35,6 +36,17 @@ const io = new SocketIOServer(server, {
 
 // Initialize database schema
 initDatabase();
+
+// Auto-seed if database is empty
+try {
+  const countRow = db.prepare('SELECT count(*) as count FROM buildings').get() as { count: number };
+  if (!countRow || countRow.count === 0) {
+    console.log('[Database] Empty database detected. Seeding default campus digital twin data...');
+    seedDatabase();
+  }
+} catch (err) {
+  console.warn('[Database] Auto-seed check warning:', err);
+}
 
 // Instantiate IoT Simulation Engine
 const simulator = new IoTSimulator(io);
