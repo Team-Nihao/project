@@ -358,6 +358,20 @@ export class IoTSimulator {
     });
     insertBatch();
 
+    // Periodically prune sensor readings to keep recent 500 entries
+    if (this.tickCount % 20 === 0) {
+      try {
+        db.prepare(`
+          DELETE FROM sensor_readings 
+          WHERE id NOT IN (
+            SELECT id FROM sensor_readings ORDER BY id DESC LIMIT 500
+          )
+        `).run();
+      } catch (err) {
+        // Non-critical cleanup
+      }
+    }
+
     // Broadcast Delta via WebSocket
     const deltaPayload: TelemetryDelta = {
       timestamp,

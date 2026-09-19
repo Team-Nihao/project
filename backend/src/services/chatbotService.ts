@@ -309,6 +309,25 @@ export class ChatbotService {
       matchedLot = state.parking_lots.find((p) => p.id === 'park-unimall');
     }
 
+    const lots = state.parking_lots.map((p) => {
+      const occPct = Math.round((p.current_occupied / p.total_capacity) * 100);
+      return {
+        id: p.id,
+        name: p.name,
+        capacity: p.total_capacity,
+        occupied: p.current_occupied,
+        open: p.total_capacity - p.current_occupied,
+        pct: occPct,
+        ev_open: p.ev_charging_spots - p.ev_occupied
+      };
+    });
+
+    const totalCapacity = lots.reduce((acc, l) => acc + l.capacity, 0);
+    const totalOccupied = lots.reduce((acc, l) => acc + l.occupied, 0);
+    const totalAvailable = lots.reduce((acc, l) => acc + l.open, 0);
+    const totalEvAvailable = lots.reduce((acc, l) => acc + l.ev_open, 0);
+    const occupancyPct = totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0;
+
     if (matchedLot) {
       const occPct = Math.round((matchedLot.current_occupied / matchedLot.total_capacity) * 100);
       return {
@@ -324,24 +343,24 @@ export class ChatbotService {
           ev_available: matchedLot.ev_charging_spots - matchedLot.ev_occupied,
           is_critical: occPct >= 90
         },
-        lots: []
+        lots,
+        total_capacity: totalCapacity,
+        total_occupied: totalOccupied,
+        total_available: totalAvailable,
+        total_ev_available: totalEvAvailable,
+        occupancy_pct: occupancyPct
       };
     }
 
-    const lots = state.parking_lots.map((p) => {
-      const occPct = Math.round((p.current_occupied / p.total_capacity) * 100);
-      return {
-        id: p.id,
-        name: p.name,
-        capacity: p.total_capacity,
-        occupied: p.current_occupied,
-        open: p.total_capacity - p.current_occupied,
-        pct: occPct,
-        ev_open: p.ev_charging_spots - p.ev_occupied
-      };
-    });
-
-    return { matched_lot: null, lots };
+    return {
+      matched_lot: null,
+      lots,
+      total_capacity: totalCapacity,
+      total_occupied: totalOccupied,
+      total_available: totalAvailable,
+      total_ev_available: totalEvAvailable,
+      occupancy_pct: occupancyPct
+    };
   }
 
   /**
@@ -360,13 +379,21 @@ export class ChatbotService {
       matchedZone = state.crowd_zones.find((z) => z.id === 'zone-tech-walk');
     }
 
+    const allZones = state.crowd_zones.map((z) => ({
+      name: z.name,
+      density_score: z.density_score,
+      density_level: z.density_level
+    }));
+
+    const sorted = [...allZones].sort((a, b) => b.density_score - a.density_score);
+    const mostCrowded = sorted[0] || { name: 'Campus Center', density_score: 50, density_level: 'moderate' as const };
+    const quietest = sorted[sorted.length - 1] || { name: 'Quiet Gardens', density_score: 10, density_level: 'low' as const };
+
     return {
       matched_zone: matchedZone,
-      all_zones: state.crowd_zones.map((z) => ({
-        name: z.name,
-        density_score: z.density_score,
-        density_level: z.density_level
-      }))
+      all_zones: allZones,
+      most_crowded: mostCrowded,
+      quietest: quietest
     };
   }
 
@@ -410,14 +437,21 @@ export class ChatbotService {
       );
     }
 
+    const mapped = issues.map((i) => ({
+      title: i.title,
+      location: i.location_name,
+      priority: i.priority,
+      status: i.status
+    }));
+
+    const criticalCount = issues.filter((i) => i.priority === 'critical').length;
+
     return {
       total_active: issues.length,
-      issues: issues.map((i) => ({
-        title: i.title,
-        location: i.location_name,
-        priority: i.priority,
-        status: i.status
-      }))
+      total_open_issues: issues.length,
+      critical_issues: criticalCount,
+      active_issues: mapped,
+      issues: mapped
     };
   }
 
@@ -623,7 +657,7 @@ export class ChatbotService {
         };
       }
 
-      const bestLot = [...parkingData.lots].sort((a, b) => b.open - a.open)[0];
+      const bestLot = [...parkingData.lots].sort((a, b) => b.open - a.open)[0] || { name: 'Gate 1 GT Road Parking', open: 0 };
       return {
         response: `Campus-wide parking is currently at **${parkingData.occupancy_pct}% capacity** with **${parkingData.total_available} total open spots** and **${parkingData.total_ev_available} EV charging stations ready**. Your best bet right now is **${bestLot.name}** with **${bestLot.open} open bays**!`,
         sessionId,
