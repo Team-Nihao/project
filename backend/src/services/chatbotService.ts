@@ -216,6 +216,8 @@ export class ChatbotService {
           id: targetBldg.id,
           name: targetBldg.name,
           code: targetBldg.code,
+          type: targetBldg.type,
+          description: targetBldg.description,
           current_occupancy: targetBldg.current_occupancy,
           total_capacity: targetBldg.total_capacity,
           occupancy_pct: occPct,
@@ -230,6 +232,7 @@ export class ChatbotService {
             next_available_time: r.next_available_time,
             next_class: r.next_class
           })),
+          facilities: targetBldg.facilities.map((f) => f.name),
           active_issues_count: targetBldg.active_issues.length,
           critical_alerts: criticalTickets.length
         }
@@ -458,43 +461,214 @@ export class ChatbotService {
   /**
    * Deterministic Semantic Engine
    */
+  /**
+   * Comprehensive Context-Aware Semantic Engine
+   */
   public static processWithSemanticEngine(
     query: string,
     sessionId: string
   ): ChatResponse {
-    const lower = query.toLowerCase();
+    const raw = query.trim();
+    const lower = raw.toLowerCase();
     const timestamp = new Date().toISOString();
+    const state = DataFusionService.getFusedCampusState();
 
-    // GREETINGS
-    if (/^(hi|hello|hey|greetings|namaste|good morning|good afternoon|what's up|sup)\b/i.test(lower)) {
+    // 1. CONVERSATIONAL INTENTS (Greetings, identity, gratitude, appreciation, farewell)
+    if (/^(who are you|what are you|your name|what can you do|introduce yourself|tell me about yourself)\b/i.test(lower)) {
       return {
-        response: "Hello! I am your **Campus Digital Twin Assistant**. I monitor real-time telemetry across the university's 600-acre smart campus. You can ask me about classroom and lab availability, parking capacity, crowd levels, or scheduled events.",
+        response: "👋 I am your **LPU Campus Digital Twin AI Assistant**!\n\nI am connected in real time to our ~600-acre campus IoT telemetry stream, timetable scheduling database, and facilities management system. Here is what I can assist you with:\n• 🏫 **Classroom & Lab Availability**: Find free rooms, coding suites, and study spaces.\n• 🚗 **Parking Saturation & EV Bays**: Real-time open spots across all 4 campus lots.\n• 👥 **Crowd Density & Hotspots**: Locate quiet study areas or monitor cafeteria rushes.\n• 📅 **Campus Events & Fests**: Schedules for YouthVibe, hackathons, and UniPolis gatherings.\n• 🛠️ **Issue & Incident Reporting**: Guidance on logging maintenance, IT, or safety tickets.\n• 🏛️ **Campus Landmarks & Navigation**: Instant status for any of our 12 major campus blocks!",
+        sessionId,
+        timestamp,
+        intent: 'identity',
+        suggestions: ['Is Block 34 free right now?', 'Where can I eat lunch?', 'Parking near Uni-Mall', 'What events are happening today?']
+      };
+    }
+
+    if (/^(thank you|thanks|thx|appreciate it|thank u|many thanks)\b/i.test(lower)) {
+      return {
+        response: "You're very welcome! 😊 Feel free to ask anytime you need real-time campus info—whether it's finding an open lab, checking parking near Gate 1, or checking crowd levels at the Uni-Mall. Have a great day at LPU!",
+        sessionId,
+        timestamp,
+        intent: 'gratitude',
+        suggestions: ['Is Block 34 free?', 'Check Uni-Mall Food Court', "Today's Events", 'Parking Status']
+      };
+    }
+
+    if (/^(cool|awesome|great|nice|super|perfect|good job|well done|excellent)\b/i.test(lower)) {
+      return {
+        response: "Glad I could help! 👍 Let me know if you need any other real-time updates across the campus blocks.",
+        sessionId,
+        timestamp,
+        intent: 'acknowledgment',
+        suggestions: ['Check Free Rooms', 'Parking near Block 34', 'Central Library status', 'Show Campus Overview']
+      };
+    }
+
+    if (/^(bye|goodbye|see you|cya|take care|have a good day)\b/i.test(lower)) {
+      return {
+        response: "Goodbye! 👋 Wishing you a smooth and productive day on campus. Return whenever you need live telemetry updates!",
+        sessionId,
+        timestamp,
+        intent: 'farewell',
+        suggestions: ['Campus Overview', 'Check Free Rooms', "Today's Events"]
+      };
+    }
+
+    if (/^(hi|hello|hey|greetings|namaste|good morning|good afternoon|good evening|what's up|sup)\b/i.test(lower)) {
+      const hr = new Date().getHours();
+      const timeGreeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+      return {
+        response: `${timeGreeting}! 👋 I am your **Campus Digital Twin Assistant**. I monitor real-time telemetry across LPU's 600-acre smart campus. You can ask me about classroom and lab availability, parking capacity, crowd levels, or scheduled events.`,
         sessionId,
         timestamp,
         intent: 'greeting',
-        suggestions: ['Is Block 34 free?', 'Parking near Campus Mall', "What's crowded right now?", "Today's Events"]
+        suggestions: ['Is Block 34 free?', 'Where can I eat lunch?', 'Parking near Uni-Mall', "What's crowded right now?"]
       };
     }
 
-    // CAMPUS APP HELP & MAP NAVIGATION
+    // 2. VITALITY SCORE & DIGITAL TWIN ARCHITECTURE
     if (
-      lower.includes('how to') ||
-      lower.includes('what do the colors mean') ||
-      lower.includes('color meaning') ||
-      lower.includes('help me') ||
-      lower.includes('instructions') ||
-      (lower.includes('map') && lower.includes('how'))
+      lower.includes('vitality') ||
+      lower.includes('vitality score') ||
+      lower.includes('what is this app') ||
+      lower.includes('how does this work') ||
+      lower.includes('how does it work') ||
+      lower.includes('what is digital twin') ||
+      lower.includes('architecture') ||
+      lower.includes('telemetry')
     ) {
       return {
-        response: "Here is a quick guide to the digital twin: 🟢 Emerald indicators signify <60% occupancy (Available), 🟡 Amber signifies 60-80% (Busy), and 🔴 Rose signifies >80% (Congested). You can pan and zoom on the map, hover on any building for live preview statistics, or toggle 'Crowd Heatmap' to review density hotspots.",
+        response: `🌐 **Campus Digital Twin & Vitality Score**:\n\n` +
+          `• **Operational Vitality Score**: Currently **${state.campus_vitality_score}/100** (Optimal health range: 85–100). This real-time metric aggregates overall campus load (${state.overall_occupancy_percentage}%), room availability (${state.free_rooms_count} free), parking saturation (${state.parking_available_spots} open bays), and active unresolved tickets (${state.open_issues_count} open).\n` +
+          `• **Real-Time IoT Pipeline**: A background simulation engine ticks every 3 seconds to generate realistic PIR motion, ultrasonic parking barrier, and crowd Wi-Fi readings stored in an embedded SQLite WAL database.\n` +
+          `• **Predictive Intelligence**: Calculates 1–2 hour forward demand forecasts for high-traffic facilities and rate-of-change parking saturation warnings.\n\n` +
+          `💡 **Try this**: Use the scenario buttons in the top toolbar (*Lunch Rush*, *Class Change*, *Evacuation*) to inject campus disruptions on the fly!`,
         sessionId,
         timestamp,
-        intent: 'help',
-        suggestions: ['Is Block 34 free?', 'Where to park near North Gate?', "Check Crowd Heatmap", 'Report an Issue']
+        intent: 'vitality_score',
+        dataUsed: {
+          vitality: state.campus_vitality_score,
+          load: state.overall_occupancy_percentage,
+          openIssues: state.open_issues_count
+        },
+        suggestions: ['Is Block 34 free?', 'Check Crowd Heatmap', 'Parking Status', 'Active Issues']
       };
     }
 
-    // 3D AERIAL MASTERPLAN & CAMPUS ZONES INTENT
+    // 3. FOOD, DINING, CAFES & LUNCH
+    if (/\b(food|eat|eating|lunch|dinner|breakfast|canteen|food court|hungry|cafe|restaurant|dominos|subway|meals|snack|coffee)\b/i.test(lower)) {
+      const unimall = state.buildings.find((b) => b.id === 'bldg-unimall');
+      const foodCourtCrowd = state.crowd_zones.find((z) => z.id === 'zone-canteen-plaza');
+      const mallParking = state.parking_lots.find((p) => p.id === 'park-unimall');
+      const mallOpen = mallParking ? (mallParking.total_capacity - mallParking.current_occupied) : 0;
+      const unimallLoad = unimall ? Math.round((unimall.current_occupancy / unimall.total_capacity) * 100) : 75;
+      const crowdScore = foodCourtCrowd ? foodCourtCrowd.density_score : 80;
+
+      return {
+        response: `🍽️ **Dining & Food Options at LPU**:\n\n` +
+          `• **Uni-Mall Central Food Court**: The primary dining hotspot featuring multi-cuisine food counters, Domino's, Subway, bakeries, and cafes. It is currently at **${unimallLoad}% load** with a crowd density score of **${crowdScore}/100**.\n` +
+          `• **Residential Mess**: North Residence (BH-4) and South Residence (GH-2) dining halls offer full student meal plans and evening snacks.\n` +
+          `• **Tech Walkway Kiosks**: Nescafe hubs and juice counters adjacent to Block 34 (CSE) and Block 32 (Mechanical).\n\n` +
+          `🚗 **Parking Advice**: The Uni-Mall Multi-Deck parking currently has **${mallOpen} open bays**.`,
+        sessionId,
+        timestamp,
+        intent: 'food_dining',
+        dataUsed: { unimallLoad, crowdScore, mallOpen },
+        suggestions: ['How crowded is Uni-Mall right now?', 'Parking near Uni-Mall', 'Is Block 34 free?', 'Campus Overview']
+      };
+    }
+
+    // 4. SPORTS, GYM & FITNESS
+    if (/\b(gym|fitness|workout|sport|sports|badminton|swimming|pool|cricket|football|basketball|tennis|squash|stadium|exercise|match)\b/i.test(lower)) {
+      const sportsBldg = state.buildings.find((b) => b.id === 'bldg-sports');
+      const sportsOcc = sportsBldg ? Math.round((sportsBldg.current_occupancy / sportsBldg.total_capacity) * 100) : 50;
+
+      return {
+        response: `🏅 **Sports, Recreation & Fitness Facilities**:\n\n` +
+          `The **Shanti Devi Mittal Indoor Stadium & Sports Complex (SDM)** is LPU's world-class athletic hub! Highlights include:\n` +
+          `• **Olympic Aquatic Center**: 50-meter Olympic-size indoor heated swimming pool.\n` +
+          `• **Racquet & Ball Courts**: 12 indoor badminton courts, squash courts, and table tennis arena.\n` +
+          `• **Fitness & Gym**: Modern multi-station fitness suite, free weights, and cardio zone.\n` +
+          `• **Outdoor Grounds**: Full-sized cricket ground, football stadium, and 400m synthetic athletic track.\n\n` +
+          `📊 **Live Telemetry**: SDM Complex is currently at **${sportsOcc}% load** (${sportsBldg?.current_occupancy || 0}/${sportsBldg?.total_capacity || 0} active users). All facilities are open for student sessions!`,
+        sessionId,
+        timestamp,
+        intent: 'sports_fitness',
+        dataUsed: sportsBldg,
+        suggestions: ['Where is SDM Stadium?', 'Is Uni-Mall crowded?', 'Check Free Rooms', 'Campus Overview']
+      };
+    }
+
+    // 5. HEALTHCARE, CLINIC, DOCTOR & EMERGENCY
+    if (/\b(doctor|hospital|clinic|medical|medicine|emergency|ambulance|sick|fever|injury|health|first aid|dispensary|pharmacy)\b/i.test(lower)) {
+      const medBldg = state.buildings.find((b) => b.id === 'bldg-med');
+      const medOcc = medBldg ? Math.round((medBldg.current_occupancy / medBldg.total_capacity) * 100) : 30;
+
+      return {
+        response: `🏥 **University Health Centre & Emergency Medical Care**:\n\n` +
+          `• **24/7 Campus Clinic & Hospital**: Located on the eastern medical wing (near Block 25 Pharmacy), equipped with emergency treatment beds, inpatient care, and general physicians.\n` +
+          `• **On-Campus Pharmacy**: Fully stocked in-house pharmacy for routine prescriptions and over-the-counter medication.\n` +
+          `• **Ambulance & Trauma Support**: 24/7 dedicated campus ambulance on standby for immediate hospital transit.\n\n` +
+          `📊 **Current Clinic Load**: Operating normally at **${medOcc}% capacity** (${medBldg?.current_occupancy || 0}/${medBldg?.total_capacity || 0} patients). In an acute emergency, please alert the nearest security gate or campus emergency desk immediately.`,
+        sessionId,
+        timestamp,
+        intent: 'healthcare_medical',
+        dataUsed: medBldg,
+        suggestions: ['Where is Uni-Hospital located?', 'Active issues on campus', 'Check Central Library', 'Campus Overview']
+      };
+    }
+
+    // 6. HOSTELS & STUDENT RESIDENCES
+    if (/\b(hostel|hostels|boys hostel|girls hostel|bh4|bh-4|gh2|gh-2|dorm|dormitory|residence|warden|curfew|laundry)\b/i.test(lower)) {
+      const bh4 = state.buildings.find((b) => b.id === 'bldg-bh-4');
+      const gh2 = state.buildings.find((b) => b.id === 'bldg-gh-2');
+      const bh4Occ = bh4 ? Math.round((bh4.current_occupancy / bh4.total_capacity) * 100) : 60;
+      const gh2Occ = gh2 ? Math.round((gh2.current_occupancy / gh2.total_capacity) * 100) : 60;
+
+      return {
+        response: `🏢 **Student Residences & Hostels at LPU**:\n\n` +
+          `• **North Residence (Hostel BH-4)**: Multi-storey male undergraduate residence featuring AC/non-AC rooms, attached dining mess, indoor gym, study pods, and 24/7 power backup. Current load: **${bh4Occ}%** (${bh4?.current_occupancy || 0}/${bh4?.total_capacity || 0}).\n` +
+          `• **South Residence (Hostel GH-2)**: Modern secure female residence cluster with dedicated dining facilities, reading lounges, laundromat, and 24/7 security. Current load: **${gh2Occ}%** (${gh2?.current_occupancy || 0}/${gh2?.total_capacity || 0}).\n\n` +
+          `Both residential complexes feature biometric entry, on-site wardens, and high-speed campus Wi-Fi.`,
+        sessionId,
+        timestamp,
+        intent: 'hostels_residence',
+        dataUsed: { bh4, gh2 },
+        suggestions: ['Is Block 34 CSE free?', 'Where can I eat lunch?', 'Check SDM Sports Gym', 'Campus Overview']
+      };
+    }
+
+    // 7. DSW, STUDENT WELFARE, CLUBS, ADMISSIONS & ADMINISTRATION
+    if (/\b(dsw|student welfare|club|clubs|societies|admission|admissions|fee|fees|chancellor|vice chancellor|vc|id card|identity card|admin|senate|registrar|exam branch)\b/i.test(lower)) {
+      return {
+        response: `🏛️ **Student Welfare, Clubs & Central Administration**:\n\n` +
+          `• **Division of Student Welfare (Block 13 - DSW)**: Headquartered in Block 13. Coordinates 100+ student organizations, cultural societies, robotics clubs, NCC/NSS units, student grievance redressal, and YouthVibe festival organization.\n` +
+          `• **Senate House (Block 01 - Central Admin)**: The administrative seat housing the Vice-Chancellor's Secretariat, Registrar's Office, Admissions Directorate, Examinations Wing, and Student Accounts/Fee desks.\n` +
+          `• **Student ID Cards & Official Certifications**: Processed at the Registrar service counters in Senate House and the DSW Helpdesk in Block 13.\n\n` +
+          `💡 Both blocks are accessible from the central campus boulevard with nearby parking at Gate 1.`,
+        sessionId,
+        timestamp,
+        intent: 'admin_dsw',
+        suggestions: ['Where is Block 13 DSW?', 'Gate 1 GT Road parking', "Today's Events", 'Campus Overview']
+      };
+    }
+
+    // 8. WI-FI, INTERNET & IT NETWORK
+    if (/\b(wifi|wi-fi|internet|network|ums|login|portal|connectivity|broadband)\b/i.test(lower)) {
+      return {
+        response: `📶 **Campus High-Speed Wi-Fi & IT Services**:\n\n` +
+          `• **SSID / Network**: Connect to **\`LPU_Student\`** or **\`LPU_Staff\`**.\n` +
+          `• **Login Credentials**: Use your University Registration Number and UMS password at the captive portal prompt.\n` +
+          `• **Coverage**: High-density enterprise Wi-Fi 6 access points cover all academic blocks (Blocks 34, 32, 25, 37, 13), Uni-Mall, and residential hostels.\n\n` +
+          `💡 **Facing connectivity or speed issues?** Click the **'Report Issue'** button in the **'Events & Issues'** tab to file an IT maintenance ticket for rapid technician dispatch!`,
+        sessionId,
+        timestamp,
+        intent: 'wifi_it',
+        suggestions: ['How to report an issue?', 'Is Block 34 CSE free?', 'Check Block 37 Library', 'Campus Overview']
+      };
+    }
+
+    // 9. 3D AERIAL MASTERPLAN & CAMPUS ZONES INTENT
     if (
       lower.includes('aerial') ||
       lower.includes('masterplan') ||
@@ -517,12 +691,12 @@ export class ChatbotService {
       };
     }
 
-    // CHECK FOR KNOWN NON-EXISTENT LOCATIONS (e.g. Hogwarts, Stanford)
-    const imaginaryLocations = ['hogwarts', 'stanford', 'harvard', 'mit', 'building z', 'hostel 99', 'alien'];
+    // 10. NON-EXISTENT / FICTIONAL LOCATIONS (Hogwarts, Stanford, etc.)
+    const imaginaryLocations = ['hogwarts', 'stanford', 'harvard', 'mit', 'building z', 'hostel 99', 'alien', 'moon'];
     for (const loc of imaginaryLocations) {
       if (lower.includes(loc)) {
         return {
-          response: `I couldn't find "${loc}" on the university campus. The digital twin tracks 12 core campus blocks including Academic Blocks (CS, Mechanical, Pharmacy), Central Library, Campus Mall, Convention Arena, Residence Halls, and the Sports Complex. Check the main map to explore all 12 blocks!`,
+          response: `I couldn't find "${loc}" on the university campus. The digital twin tracks 12 authentic campus blocks including Academic Blocks (CS Block 34, Mechanical Block 32, Pharmacy Block 25), Central Library Block 37, Uni-Mall, UniPolis Arena, Residence Halls, and the Sports Complex. Check the main map to explore all 12 blocks!`,
           sessionId,
           timestamp,
           intent: 'unknown_location',
@@ -531,18 +705,118 @@ export class ChatbotService {
       }
     }
 
-    // AMBIGUOUS SHORT QUERIES (e.g. "Is it open?", "Is it free?")
-    if (/^(is it free|is it open|can i go|is it busy|what is the status|status)\??$/i.test(query.trim())) {
+    // 11. MAP COLORS & LEGEND EXPLANATION
+    if (
+      lower.includes('what do the colors mean') ||
+      lower.includes('color meaning') ||
+      lower.includes('legend') ||
+      (lower.includes('color') && lower.includes('green')) ||
+      (lower.includes('map') && lower.includes('legend'))
+    ) {
       return {
-        response: "Which facility or building are you inquiring about? For example, you can ask: *'Is Block 34 CSE free right now?'*, *'How crowded is the Campus Mall?'*, or *'Is North Gate parking full?'*",
+        response: "🗺️ **Campus Map Color Indicators & Legend**:\n\n" +
+          "• 🟢 **Emerald (<60% Load / Free)**: High room/facility availability, optimal study conditions, and plenty of vacant seats.\n" +
+          "• 🟡 **Amber (60%–80% Load / Busy)**: Moderate occupancy, ongoing classes, or active hallway traffic.\n" +
+          "• 🔴 **Rose (>80% Load / Congested)**: Peak saturation, few or no vacant classrooms, and high crowd concentration.\n\n" +
+          "You can toggle between **Availability**, **Crowd Heatmap**, and **Events & Issues** layers on the top right map toolbar!",
         sessionId,
         timestamp,
-        intent: 'clarification',
-        suggestions: ['Is Block 34 free?', 'Is Campus Mall food court busy?', 'Parking near North Gate', 'Central Library status']
+        intent: 'map_legend',
+        suggestions: ['Is Block 34 free?', 'Where to park near Gate 1?', "Check Crowd Heatmap", 'Report an Issue']
       };
     }
 
-    // ROOM / CLASSROOM / LAB AVAILABILITY
+    // 12. SPECIFIC BUILDING OR ROOM INQUIRY (Check early so queries like "tell me about block 34" or "is library open" match directly)
+    const bldgOrRoomResult = this.queryBuildingOrRoom(lower);
+    if (bldgOrRoomResult.found && bldgOrRoomResult.building) {
+      const b = bldgOrRoomResult.building;
+      const statusEmoji = b.occupancy_pct >= 80 ? '🔴 Congested' : b.occupancy_pct >= 60 ? '🟡 Busy' : '🟢 Available';
+
+      // Check if user specifically asked about rooms/free seats in this building
+      if (lower.includes('room') || lower.includes('free') || lower.includes('lab') || lower.includes('seat') || lower.includes('vacant')) {
+        let resp = `${statusEmoji} **${b.name} (${b.code})** is currently at **${b.occupancy_pct}% load** (${b.current_occupancy}/${b.total_capacity} occupants).`;
+        if (b.free_rooms_count > 0) {
+          const sample = b.free_rooms.slice(0, 3).map((r: any) => `**${r.name}** (Free until ${r.next_available_time})`).join(', ');
+          resp += `\n\nThere are **${b.free_rooms_count} free rooms** available right now: ${sample}.`;
+        } else {
+          resp += `\n\nAll scheduled classrooms and labs in this block are currently in session.`;
+        }
+        if (b.active_issues_count > 0) {
+          resp += ` *(Note: ${b.active_issues_count} open maintenance ticket(s) in this block).*`;
+        }
+        return {
+          response: resp,
+          sessionId,
+          timestamp,
+          intent: 'building_rooms',
+          dataUsed: b,
+          suggestions: [`Parking near ${b.code}`, 'Find free labs near me', 'Check Central Library', 'Campus Overview']
+        };
+      }
+
+      // Check if user specifically asked about parking near this building
+      if (lower.includes('park') || lower.includes('car') || lower.includes('vehicle')) {
+        const parkingData = this.queryParking(lower);
+        if (parkingData.matched_lot) {
+          const lot = parkingData.matched_lot;
+          return {
+            response: `🚗 **Parking near ${b.name}**:\nYour closest facility is **${lot.name}**, currently featuring **${lot.open_spots} open spots** (${lot.occupancy_pct}% full) and **${lot.ev_available} EV charging bays** ready.`,
+            sessionId,
+            timestamp,
+            intent: 'building_parking',
+            dataUsed: lot,
+            suggestions: [`Is ${b.code} free right now?`, 'Uni-Mall Food Court rush', "Today's Events"]
+          };
+        } else {
+          const lot = parkingData.lots[0] || { name: 'Gate 1 GT Road Parking', open: 50, pct: 50, ev_open: 5 };
+          return {
+            response: `🚗 **Parking near ${b.name}**:\nRecommended facility is **${lot.name}**, currently featuring **${lot.open} open spots** (${lot.pct}% full) and **${lot.ev_open} EV charging bays** ready.`,
+            sessionId,
+            timestamp,
+            intent: 'building_parking',
+            dataUsed: lot,
+            suggestions: [`Is ${b.code} free right now?`, 'Uni-Mall Food Court rush', "Today's Events"]
+          };
+        }
+      }
+
+      // General building information & status query
+      let buildingResp = `🏛️ **${b.name} (${b.code})**\n\n` +
+        `• **Overview**: ${b.description}\n` +
+        `• **Real-Time Load**: ${statusEmoji} at **${b.occupancy_pct}% capacity** (${b.current_occupancy}/${b.total_capacity} people active).\n` +
+        `• **Classrooms & Labs**: ${b.free_rooms_count > 0 ? `**${b.free_rooms_count} free spaces** available right now (including ${b.free_rooms.slice(0, 2).map((r: any) => r.name).join(', ')}).` : 'All classrooms currently occupied.'}\n`;
+
+      if (b.facilities && b.facilities.length > 0) {
+        buildingResp += `• **Facilities**: ${b.facilities.join(', ')}.\n`;
+      }
+      if (b.active_issues_count > 0) {
+        buildingResp += `• **Alerts**: ${b.active_issues_count} active maintenance ticket(s) recorded in this block.\n`;
+      }
+
+      buildingResp += `\n💡 Click on this building on the main map to inspect its full interactive room-by-room floor plan!`;
+
+      return {
+        response: buildingResp,
+        sessionId,
+        timestamp,
+        intent: 'building_overview',
+        dataUsed: b,
+        suggestions: [`Free rooms in ${b.code}`, `Parking near ${b.code}`, 'Check Central Library', 'Campus Overview']
+      };
+    } else if (bldgOrRoomResult.found && bldgOrRoomResult.room) {
+      const r = bldgOrRoomResult.room;
+      const statusColor = r.status === 'free' ? '🟢 Available' : '🔴 Occupied';
+      return {
+        response: `📍 **${r.name} (${r.building})**\n\n• **Status**: ${statusColor}\n• **Floor & Type**: Floor ${r.floor} • ${r.type.toUpperCase()}\n• **Occupancy**: ${r.current_occupancy} / ${r.capacity} seats\n• **Schedule**: Next class *"${r.next_class}"* (Available until ${r.next_available_time}).`,
+        sessionId,
+        timestamp,
+        intent: 'room_detail',
+        dataUsed: r,
+        suggestions: ['Find other free labs', 'Is Block 34 free?', 'Campus Overview']
+      };
+    }
+
+    // 13. GENERAL CLASSROOM, LAB & STUDY SPACE VACANCIES
     if (
       lower.includes('free') ||
       lower.includes('available') ||
@@ -551,73 +825,34 @@ export class ChatbotService {
       lower.includes('room') ||
       lower.includes('classroom') ||
       lower.includes('study space') ||
-      lower.includes('study pod')
+      lower.includes('study pod') ||
+      lower.includes('quiet place') ||
+      lower.includes('where to study')
     ) {
-      // Check if a specific building was named
-      const result = this.queryBuildingOrRoom(lower);
-
-      if (result.found && result.building) {
-        const b = result.building;
-        const statusEmoji = b.occupancy_pct >= 80 ? '🔴' : b.occupancy_pct >= 60 ? '🟡' : '🟢';
-        let resp = `${statusEmoji} **${b.name} (${b.code})** is currently at **${b.occupancy_pct}% load** (${b.current_occupancy}/${b.total_capacity} occupants).`;
-
-        if (b.free_rooms_count > 0) {
-          const sample = b.free_rooms.slice(0, 2).map((r: any) => `**${r.name}** (Free until ${r.next_available_time})`).join(', ');
-          resp += ` You'll find **${b.free_rooms_count} free rooms** right now, including ${sample}.`;
-        } else {
-          resp += ` All scheduled classrooms in this block are currently active.`;
-        }
-
-        if (b.active_issues_count > 0) {
-          resp += ` *(Note: ${b.active_issues_count} open maintenance ticket(s) in this block).*`;
-        }
-
-        return {
-          response: resp,
-          sessionId,
-          timestamp,
-          intent: 'room_availability',
-          dataUsed: b,
-          suggestions: ['Find a free lab near me', 'Check Block 37 Library', 'Parking near Block 34', 'Campus Overview']
-        };
-      } else if (result.found && result.room) {
-        const r = result.room;
-        const statusColor = r.status === 'free' ? '🟢 Available' : '🔴 Occupied';
-        return {
-          response: `${r.name} in **${r.building}** is currently **${statusColor}** (${r.current_occupancy}/${r.capacity} seats). Next scheduled class: *${r.next_class}* (Available: ${r.next_available_time}).`,
-          sessionId,
-          timestamp,
-          intent: 'room_availability',
-          dataUsed: r,
-          suggestions: ['Find free labs near me', 'Check Block 34 CSE', 'Check Block 37 Library']
-        };
-      }
-
-      // Generic "find free rooms" query
       const freeSummary = this.queryFreeRooms(
         lower.includes('lab') ? 'lab' : lower.includes('study') ? 'study_room' : undefined
       );
       const roomList = freeSummary.sample_rooms
-        .map((r: any) => `• **${r.name}** (${r.building}) — free until ${r.next_available_time}`)
+        .map((r: any) => `• **${r.name}** (${r.building}, Floor ${r.floor}) — free until **${r.next_available_time}** (${r.capacity} seats)`)
         .join('\n');
 
       return {
-        response: `Across campus, there are **${freeSummary.total_free} free spaces** available right now! Here are top options:\n${roomList}\n\nYou can also jump to the **"Classroom & Labs"** tab to filter by floor and department.`,
+        response: `Across LPU campus, there are currently **${freeSummary.total_free} free spaces** ready for students! Here are top available options:\n\n${roomList}\n\n💡 Switch to the **"Classrooms & Labs"** tab to filter by department, floor, or room type.`,
         sessionId,
         timestamp,
         intent: 'room_availability',
         dataUsed: freeSummary,
-        suggestions: ['Is Block 34 CSE free?', 'Check Block 37 Library', 'Check Uni-Mall Food Court']
+        suggestions: ['Is Block 34 CSE free?', 'Check Central Library Block 37', 'Check Uni-Mall Food Court']
       };
     }
 
-    // CAMPUS EVENTS & FESTS (Check before parking so words like 'events' are never hijacked)
-    if (/\b(event|events|fest|fests|hackathon|happening|today)\b/i.test(lower)) {
+    // 14. CAMPUS EVENTS, FESTS & CONFERENCES
+    if (/\b(event|events|fest|fests|hackathon|happening|today|youthvibe|concert|cultural|symposium)\b/i.test(lower)) {
       const eventData = this.queryEvents(lower);
 
       if (eventData.events.length === 0) {
         return {
-          response: `No special events found matching your search. There are ${eventData.total_events} scheduled flagship events today across LPU campus!`,
+          response: `No specific events matched your search term. However, there are ${eventData.total_events} scheduled flagship events today across LPU campus!`,
           sessionId,
           timestamp,
           intent: 'events',
@@ -626,21 +861,21 @@ export class ChatbotService {
       }
 
       const list = eventData.events
-        .slice(0, 3)
-        .map((e: any) => `• **${e.title}** @ *${e.venue}* (${e.start_time.split('T')[1]?.slice(0,5) || '10:00'} - ${e.end_time.split('T')[1]?.slice(0,5) || '18:00'}, ~${e.attendees} attendees)`)
-        .join('\n');
+        .slice(0, 4)
+        .map((e: any) => `• 🌟 **${e.title}** @ *${e.venue}*\n  Timing: ${e.start_time.split('T')[1]?.slice(0,5) || '10:00'} – ${e.end_time.split('T')[1]?.slice(0,5) || '18:00'} | Category: ${e.category} (~${e.attendees} attendees)`)
+        .join('\n\n');
 
       return {
-        response: `Here are the top active events at LPU today:\n${list}\n\nCheck the **"Events & Issues"** tab to view pinned map locations!`,
+        response: `Here are the top flagship events happening at LPU today:\n\n${list}\n\n💡 Switch to the **"Events & Issues"** tab to see pinned map locations and venue directions!`,
         sessionId,
         timestamp,
         intent: 'events',
         dataUsed: eventData,
-        suggestions: ['Check UniPolis Arena', 'YouthVibe Hackathon 2026', 'One India Cultural Inaugural']
+        suggestions: ['Check UniPolis Arena', 'YouthVibe Hackathon 2026', 'Campus Overview']
       };
     }
 
-    // PARKING INQUIRIES
+    // 15. PARKING INQUIRIES
     if (/\b(park|parking|car|cars|vehicle|vehicles|ev|evs|charging|bays|valet|lot|lots)\b/i.test(lower)) {
       const parkingData = this.queryParking(lower);
 
@@ -648,7 +883,7 @@ export class ChatbotService {
         const lot = parkingData.matched_lot;
         const warn = lot.is_critical ? '⚠️ High congestion! ' : '✅ Good availability! ';
         return {
-          response: `${warn}**${lot.name}** has **${lot.open_spots} open bays** out of ${lot.total_capacity} (${lot.occupancy_pct}% full). EV Charging: **${lot.ev_available}/${lot.ev_spots} chargers free**.`,
+          response: `${warn}**${lot.name}** currently has **${lot.open_spots} open bays** out of ${lot.total_capacity} (${lot.occupancy_pct}% full). EV Charging: **${lot.ev_available}/${lot.ev_spots} chargers free**.`,
           sessionId,
           timestamp,
           intent: 'parking',
@@ -658,8 +893,12 @@ export class ChatbotService {
       }
 
       const bestLot = [...parkingData.lots].sort((a, b) => b.open - a.open)[0] || { name: 'Gate 1 GT Road Parking', open: 0 };
+      const lotSummary = parkingData.lots
+        .map((l) => `• **${l.name}**: ${l.open}/${l.capacity} spots open (${l.pct}% full, ${l.ev_open} EV chargers)`)
+        .join('\n');
+
       return {
-        response: `Campus-wide parking is currently at **${parkingData.occupancy_pct}% capacity** with **${parkingData.total_available} total open spots** and **${parkingData.total_ev_available} EV charging stations ready**. Your best bet right now is **${bestLot.name}** with **${bestLot.open} open bays**!`,
+        response: `🚗 **Campus Parking Status** (Overall: **${parkingData.occupancy_pct}% full**, **${parkingData.total_available} total spots open**):\n\n${lotSummary}\n\n💡 Your best option right now is **${bestLot.name}** with **${bestLot.open} open bays**!`,
         sessionId,
         timestamp,
         intent: 'parking',
@@ -668,15 +907,15 @@ export class ChatbotService {
       };
     }
 
-    // CROWD DENSITY & RUSH
-    if (/\b(crowd|crowded|rush|busy|traffic|density|canteen|food court)\b/i.test(lower)) {
+    // 16. CROWD DENSITY & RUSH
+    if (/\b(crowd|crowded|rush|busy|traffic|density|quiet|peaceful)\b/i.test(lower)) {
       const crowdData = this.queryCrowd(lower);
 
       if (crowdData.matched_zone) {
         const z = crowdData.matched_zone;
         const levelEmoji = z.density_score >= 80 ? '🔴 Critical' : z.density_score >= 60 ? '🟡 High' : '🟢 Moderate';
         return {
-          response: `**${z.name}** is currently experiencing **${levelEmoji} crowd density** (Score: **${z.density_score}/100**). Use the Time Scrub slider in the "Crowd Density" tab to view rush playback.`,
+          response: `**${z.name}** is currently experiencing **${levelEmoji} crowd density** (Score: **${z.density_score}/100**). Use the Time Scrub slider in the "Crowd Density" tab to view rush playback throughout the day.`,
           sessionId,
           timestamp,
           intent: 'crowd',
@@ -686,7 +925,7 @@ export class ChatbotService {
       }
 
       return {
-        response: `Right now, the busiest hotspot is **${crowdData.most_crowded.name}** (Density: **${crowdData.most_crowded.density_score}/100**), while the quietest area is **${crowdData.quietest.name}** (Density: **${crowdData.quietest.density_score}/100**).`,
+        response: `👥 **Campus Crowd & Density Overview**:\n\n• **Busiest Hotspot**: **${crowdData.most_crowded.name}** with a density score of **${crowdData.most_crowded.density_score}/100** (High traffic zone).\n• **Quietest Spot**: **${crowdData.quietest.name}** with a density score of **${crowdData.quietest.density_score}/100** (Optimal for peaceful study).\n\n💡 Switch to the **"Crowd Density"** tab to scrub through the 24-hour timeline or watch the animated heatmap playback!`,
         sessionId,
         timestamp,
         intent: 'crowd',
@@ -695,14 +934,15 @@ export class ChatbotService {
       };
     }
 
-    // ISSUES, COMPLAINTS & MAINTENANCE
+    // 17. ISSUES, COMPLAINTS & MAINTENANCE
     if (
       lower.includes('issue') ||
       lower.includes('issues') ||
       lower.includes('problem') ||
       lower.includes('ticket') ||
       lower.includes('broken') ||
-      lower.includes('wifi') ||
+      lower.includes('repair') ||
+      lower.includes('leak') ||
       lower.includes('complaint') ||
       lower.includes('report')
     ) {
@@ -710,7 +950,7 @@ export class ChatbotService {
 
       if (lower.includes('how') && lower.includes('report')) {
         return {
-          response: "To report an issue: click the **'Report Issue'** button in the **'Events & Issues'** tab (or inspect any building card and click 'Report Ticket'). Provide the location, category (IT, Electrical, Maintenance, Safety), and description. It dispatches immediately to campus maintenance!",
+          response: "🛠️ **How to Report a Campus Maintenance Issue**:\n\n1. Click the **'Report Issue'** button in the top right of the **'Events & Issues'** tab (or click on any building card and select 'Report Ticket').\n2. Provide the location (e.g., Block 34, Uni-Mall, Central Library), category (Maintenance, Electrical, IT, Water, Safety), and a brief description.\n3. Submit the ticket — it immediately pins to the building on the digital map and notifies campus facilities teams!",
           sessionId,
           timestamp,
           intent: 'issues',
@@ -719,9 +959,13 @@ export class ChatbotService {
       }
 
       if (issueData.active_issues.length > 0) {
-        const topIssue = issueData.active_issues[0];
+        const ticketList = issueData.active_issues
+          .slice(0, 3)
+          .map((t) => `• **${t.title}** @ *${t.location}* (Priority: ${t.priority.toUpperCase()}, Status: ${t.status})`)
+          .join('\n');
+
         return {
-          response: `There are currently **${issueData.total_open_issues} active tickets** (${issueData.critical_issues} critical). For instance: *"${topIssue.title}"* at **${topIssue.location}** (Priority: ${topIssue.priority.toUpperCase()}). You can track real-time resolution in the Events & Issues board.`,
+          response: `There are currently **${issueData.total_open_issues} active maintenance tickets** (${issueData.critical_issues} critical) being tracked:\n\n${ticketList}\n\nTrack real-time progress on the Kanban board in the **'Events & Issues'** tab.`,
           sessionId,
           timestamp,
           intent: 'issues',
@@ -731,7 +975,7 @@ export class ChatbotService {
       }
 
       return {
-        response: "Great news! There are currently no open critical maintenance issues for this area. Everything is operating normally.",
+        response: "✅ Great news! There are currently no open maintenance issues recorded for this area. All facilities are operating normally.",
         sessionId,
         timestamp,
         intent: 'issues',
@@ -739,19 +983,56 @@ export class ChatbotService {
       };
     }
 
-    // CAMPUS OVERVIEW / DEFAULT STATUS
-    const state = DataFusionService.getFusedCampusState();
+    // 18. SMART KEYWORD MATCHING ACROSS LIVE DATABASE
+    // If the query didn't match specific intents, search keywords in buildings, rooms, facilities, and events
+    const stopWords = new Set(['the', 'and', 'for', 'are', 'what', 'where', 'how', 'who', 'why', 'can', 'you', 'tell', 'about', 'is', 'it', 'in', 'on', 'at', 'to', 'from', 'with', 'does', 'have', 'any', 'some', 'there', 'please']);
+    const tokens = lower.split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stopWords.has(t));
+
+    if (tokens.length > 0) {
+      const matchingBldgs = state.buildings.filter((b) =>
+        tokens.some((tok) => b.name.toLowerCase().includes(tok) || b.code.toLowerCase().includes(tok) || b.description.toLowerCase().includes(tok))
+      );
+      const matchingEvents = state.events.filter((e) =>
+        tokens.some((tok) => e.title.toLowerCase().includes(tok) || e.location_name.toLowerCase().includes(tok) || e.category.toLowerCase().includes(tok))
+      );
+
+      if (matchingBldgs.length > 0 || matchingEvents.length > 0) {
+        let matchResp = `Regarding your query about **"${query.trim()}"**, here is what I found on campus:\n\n`;
+
+        if (matchingBldgs.length > 0) {
+          matchResp += `🏛️ **Matching Campus Blocks**:\n`;
+          matchingBldgs.slice(0, 2).forEach((b) => {
+            const occ = Math.round((b.current_occupancy / b.total_capacity) * 100);
+            matchResp += `• **${b.name} (${b.code})**: ${b.description.slice(0, 100)}... (Currently at **${occ}% load** with **${b.rooms.filter(r => r.status === 'free').length} free rooms**).\n`;
+          });
+          matchResp += `\n`;
+        }
+
+        if (matchingEvents.length > 0) {
+          matchResp += `🌟 **Relevant Campus Events**:\n`;
+          matchingEvents.slice(0, 2).forEach((e) => {
+            matchResp += `• **${e.title}** @ *${e.location_name}* (${e.category}, ~${e.expected_attendees} attendees).\n`;
+          });
+        }
+
+        return {
+          response: matchResp.trim(),
+          sessionId,
+          timestamp,
+          intent: 'smart_search',
+          dataUsed: { matchingBldgs, matchingEvents },
+          suggestions: ['Is Block 34 free?', 'Parking near Uni-Mall', "Today's Events", 'Show Campus Overview']
+        };
+      }
+    }
+
+    // 19. INTELLIGENT DIRECT FALLBACK (Customized to user's question, NEVER a generic automated template)
     return {
-      response: `Here is the current live pulse for **Lovely Professional University (Phagwara)**: Campus load is at **${state.overall_occupancy_percentage}%** (${state.total_campus_occupancy}/${state.total_campus_capacity} people), with **${state.free_rooms_count} free classrooms/labs**, **${state.parking_available_spots} open parking bays**, and **${state.active_events_count} active campus events**. How can I help you navigate?`,
+      response: `I searched our live digital twin for **"${query.trim()}"**, but couldn't find a matching facility or live record. \n\nAs your LPU Campus Assistant, I can instantly check:\n• 🏫 **Classroom & Lab Availability** in Blocks 34, 32, 25, 37, or 13\n• 🚗 **Parking Vacancies & EV Chargers** at Gate 1, Block 34, Uni-Mall, or UniPolis\n• 🍽️ **Food Court & Dining status** at Uni-Mall\n• 🏅 **Sports Complex & Gym** at SDM Stadium\n• 👥 **Crowd Rush** and quiet study spots across campus\n\nWhat would you like to explore?`,
       sessionId,
       timestamp,
-      intent: 'campus_overview',
-      dataUsed: {
-        load: state.overall_occupancy_percentage,
-        freeRooms: state.free_rooms_count,
-        parkingAvail: state.parking_available_spots
-      },
-      suggestions: ['Is Block 34 free right now?', 'Parking near Uni-Mall', "Today's Events", 'Report an Issue']
+      intent: 'contextual_fallback',
+      suggestions: ['Is Block 34 CSE free?', 'Where can I eat lunch?', 'Parking near Uni-Mall', "What's crowded right now?"]
     };
   }
 
